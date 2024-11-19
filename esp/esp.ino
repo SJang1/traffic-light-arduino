@@ -4,7 +4,7 @@
 const char* ssid = "SJ iPhone 15 PM";
 const char* password = "1234567890";
 
-String serverName = "https://traffic-light-demo.pages.dev/api/update";
+String serverName = "https://traffic.sjang.dev/api/update";
 
 void setup() {
   Serial.begin(9600);  // For communication with Mega
