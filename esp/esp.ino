@@ -51,7 +51,7 @@ void loop() {
     // Debounce logic to prevent rapid toggling
     if (currentPressTime - lastPressTime > 500) { // 500ms debounce delay
       // Define the states as combined strings
-      String states[] = {"1:1000:green 2:-1:red", "1:500:yellow 2:-1:red", "1:800:red 2:-1:green"};
+      String states[] = {"1:1000:red 2:-1:green", "1:500:red 2:-1:yellow", "1:800:green 2:-1:red"};
 
       // Get the current state string
       String state = states[currentState];
@@ -72,8 +72,8 @@ void loop() {
   }
 
   // Use Serial1 for receiving data and prepare data for ID 2
-  if (Serial1.available()) {
-    String data = Serial1.readStringUntil('\n'); // Read data from Serial1
+  if (Serial.available()) {
+    String data = Serial.readStringUntil('\n'); // Read data from Serial1
     data.trim();
     if (data.length() > 0) {
       String state = data;
@@ -95,7 +95,7 @@ String formatData(String message, int id) {
   String distance = message.substring(firstColonIndex + 1, lastColonIndex);
   String color = message.substring(lastColonIndex + 1);
 
-  return String(id) + ":{\"status\": \"" + color + "\", \"distance_cm\": " + distance + "}";
+  return "\"" + String(id) + "\":{\"status\": \"" + color + "\", \"distance_cm\": " + distance + "}";
 }
 
 void sendToServer() {
