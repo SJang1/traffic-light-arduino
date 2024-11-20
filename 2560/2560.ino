@@ -120,6 +120,8 @@ void loop() {
     delay(2000);
 
     print_red_light();
+    distance_loop = HC_SR04_LOOP();
+    DISP_PRINT(distance_loop);
     car_light_status = "red";
     tram_light = "green";
     Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1:" + car_light_status);
@@ -130,6 +132,9 @@ void loop() {
     tram_light = "red";
     delay(2000);
 
+    distance_loop = HC_SR04_LOOP();
+    DISP_PRINT(distance_loop);
+
     print_green_light();
     car_light_status = "green";
     Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1:" + car_light_status);
@@ -137,6 +142,6 @@ void loop() {
   } else {
     // Maintain current states
     Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1:" + car_light_status);
-    delay(1000);
+    delay(2000);
   }
 }
