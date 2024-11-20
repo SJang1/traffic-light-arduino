@@ -119,7 +119,7 @@ void loop() {
     // 1: tram, 2:car
     tram_light = "red";
     Serial1.println("1:" + String(distance_loop) + ":" + tram_light +" 2:-1:" + car_light_status);
-    delay(2000);
+    delay(3000);
 
     print_red_light();
     distance_loop = HC_SR04_LOOP();
@@ -127,12 +127,12 @@ void loop() {
     car_light_status = "red";
     tram_light = "green";
     Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(2000);
+    delay(3000);
   } else if (distance_loop > 10 && tram_light == "green") {
     // Tram light to red, car light to green
     print_red_light();
     tram_light = "red";
-    delay(2000);
+    delay(3000);
 
     distance_loop = HC_SR04_LOOP();
     DISP_PRINT(distance_loop);
@@ -140,10 +140,10 @@ void loop() {
     print_green_light();
     car_light_status = "green";
     Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(2000);
+    delay(3000);
   } else {
     // Maintain current states
     Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(2000);
+    delay(3000);
   }
 }
