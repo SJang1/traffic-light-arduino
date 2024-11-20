@@ -125,12 +125,12 @@ void loop() {
   int distance_loop = HC_SR04_LOOP();
   DISP_PRINT(distance_loop);
 
-  if (distance_loop <= 8) {
+  if (distance_loop >= 10) {
     print_green_light();
     current_light = "green";
     Serial1.println("green:" + String(distance_loop));
     delay(2000);
-  } else if (distance_loop > 8) {
+  } else if (distance_loop < 10) {
     if (current_light == "green") {
       print_yellow_light();
       current_light = "yellow";
