@@ -16,7 +16,6 @@ String data2 = ""; // Holds data for ID 2
 
 void setup() {
   Serial.begin(9600);  // For communication with Mega
-  Serial1.begin(9600); // For communication with another device
   WiFi.begin(ssid, password);
 
   Serial.println("Connecting to WiFi...");
