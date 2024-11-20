@@ -14,6 +14,22 @@ int currentState = 0;
 String data1 = ""; // Holds data for ID 1
 String data2 = ""; // Holds data for ID 2
 
+
+String parseData(String state, int id) {
+  String prefix = String(id) + ":";
+  int startIndex = state.indexOf(prefix);
+  if (startIndex != -1) {
+    int endIndex = state.indexOf(" ", startIndex); // Find the end of this ID's data
+    if (endIndex == -1) { 
+      endIndex = state.length(); // If no space, take the rest of the string
+    }
+    return state.substring(startIndex, endIndex); // Extract the substring for the specific ID
+  }
+  return ""; // Return an empty string if the ID is not found
+}
+
+
+
 void setup() {
   Serial.begin(9600);  // For communication with Mega
   WiFi.begin(ssid, password);
