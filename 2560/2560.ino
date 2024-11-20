@@ -66,29 +66,23 @@ void print_red_light() {
 void loop() {
   int distance_loop = HC_SR04_LOOP();
 
-  if (distance_loop <= 5) {
-    if (current_light == "red") {
-      print_yellow_light();
-      current_light = "yellow";
-      Serial1.println("yellow:" + String(distance_loop));
-      delay(3000);
-    }
+  if (distance_loop <= 8)
     print_green_light();
     current_light = "green";
     Serial1.println("green:" + String(distance_loop));
-    delay(3000);
-  } else if (distance_loop > 5) {
+    delay(2000);
+  } else if (distance_loop > 8) {
     if (current_light == "green") {
       print_yellow_light();
       current_light = "yellow";
       Serial1.println("yellow:" + String(distance_loop));
-      delay(3000);
+      delay(2000);
+      distance_loop = HC_SR04_LOOP(); // revalidate because of delay time
     }
     print_red_light();
     current_light = "red";
     Serial1.println("red:" + String(distance_loop));
-    delay(3000);
+    delay(2000);
   }
 
-  delay(3000);
 }
