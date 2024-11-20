@@ -53,6 +53,7 @@ void setup() {
   Serial1.begin(9600);     // Serial to ESP8266
   HC_SR04_SETUP();
   light_setup();
+  DISP_SETUP();
 }
 
 void DISP_PRINT(int number) {
