@@ -132,11 +132,11 @@ void loop() {
 
     print_green_light();
     car_light_status = "green";
-    Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1" + car_light_status);
+    Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1:" + car_light_status);
     delay(2000);
   } else {
     // Maintain current states
-    Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1" + car_light_status);
+    Serial1.println("tram:" + String(distance_loop) + ":" + tram_light + " car:-1:" + car_light_status);
     delay(1000);
   }
 }

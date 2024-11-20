@@ -39,7 +39,7 @@ if (flashbutton == 0) {
   // Debounce logic to prevent rapid toggling
   if (currentPressTime - lastPressTime > 500) { // 500ms debounce delay
     // Define the states as combined strings
-    String states[] = {"1:1000:green 2:800:red", "1:500:yellow 2:800:red", "1:800:red 2:1000:green"};
+    String states[] = {"1:1000:green 2:-1:red", "1:500:yellow 2:-1:red", "1:800:red 2:-1:green"};
 
     // Get the current state string
     String state = states[currentState];
