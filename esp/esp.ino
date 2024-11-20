@@ -80,7 +80,9 @@ if (flashbutton == 0) {
     String data = Serial1.readStringUntil('\n'); // Read data from Serial1
     data.trim();
     if (data.length() > 0) {
-      data2 = formatData(data, 2); // Format data for ID 2
+      String state = data;
+      data1 = parseData(state, 1); // Parse for ID 1
+      data2 = parseData(state, 2); // Parse for ID 2
       sendToServer(); // Send the combined payload for ID 1 and ID 2
     }
   }
