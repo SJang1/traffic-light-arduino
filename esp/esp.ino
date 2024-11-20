@@ -1,10 +1,14 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 const char* ssid = "SJ iPhone 15 PM";
 const char* password = "1234567890";
 
 String serverName = "https://traffic.sjang.dev/api/update";
+
+int flashbutton;
+String datasend = "";
 
 void setup() {
   Serial.begin(9600);  // For communication with Mega
@@ -16,13 +20,41 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nConnected to WiFi!");
+
+  pinMode(0, INPUT_PULLUP);
 }
 
 void loop() {
+  flashbutton = digitalRead(0);
+  // Using Falsh Button, Change color
+  if (flashbutton== 0) {
+    if (datasend == "green:1000")
+    {
+      datasend = "yellow:500";
+      sendToServer(datasend);
+    }
+    else if (datasend == "yellow:500")
+    {
+      datasend = "red:800";
+      sendToServer(datasend);
+    }
+    else if (datasend == "red:800")
+    {
+      datasend = "green:1000";
+      sendToServer(datasend);
+    }
+    else
+    {
+      datasend = "green:1000";
+      sendToServer(datasend);
+    }
+
+  }
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n'); // Read data from Mega
     data.trim();
     if (data.length() > 0) {
+      datasend = data;
       sendToServer(data);
     }
   }
@@ -30,8 +62,12 @@ void loop() {
 
 void sendToServer(String message) {
   if (WiFi.status() == WL_CONNECTED) {
-    WiFiClient client;
+    //WiFiClient client;
     HTTPClient http;
+
+    // HTTPS
+    WiFiClientSecure client;
+    client.setInsecure();
 
     String color = message.substring(0, message.indexOf(':'));
     int distance = message.substring(message.indexOf(':') + 1).toInt();
@@ -40,11 +76,18 @@ void sendToServer(String message) {
     http.addHeader("Content-Type", "application/json");
 
     String jsonPayload = "{\"status\": \"" + color + "\", \"distance_cm\": " + String(distance) + "}";
+    Serial.println(jsonPayload);
     int httpResponseCode = http.POST(jsonPayload);
 
     if (httpResponseCode > 0) {
       Serial.print("HTTP Response code: ");
       Serial.println(httpResponseCode);
+
+      if (httpResponseCode != 200) {
+        String responseBody = http.getString(); // Get the response body
+        Serial.print("Response body: ");
+        Serial.println(responseBody);
+      }
     } else {
       Serial.print("Error code: ");
       Serial.println(httpResponseCode);
