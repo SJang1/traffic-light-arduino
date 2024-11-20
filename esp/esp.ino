@@ -5,10 +5,13 @@
 const char* ssid = "SJ iPhone 15 PM";
 const char* password = "1234567890";
 
-String serverName = "https://traffic.sjang.dev/api/update";
+
+//String serverName = "https://traffic.sjang.dev/api/update"; // Production (Turn on Argo before Showing users)
+String serverName = "https://traffic.sjy-dae.zone/api/update"; // dev
+
 
 int flashbutton;
-String datasend = "";
+int currentState = 0;
 
 void setup() {
   Serial.begin(9600);  // For communication with Mega
@@ -28,33 +31,19 @@ void loop() {
   flashbutton = digitalRead(0);
   // Using Falsh Button, Change color
   if (flashbutton== 0) {
-    if (datasend == "green:1000")
-    {
-      datasend = "yellow:500";
-      sendToServer(datasend);
+    String states[] = {"green:1000", "yellow:500", "red:800"};
+    String datasend = states[currentState];
+    sendToServer(datasend);
+    currentState = (currentState + 1) % 3;
+    if (currentState >= 3) {
+      currentState = 0; // Block to be overflow
     }
-    else if (datasend == "yellow:500")
-    {
-      datasend = "red:800";
-      sendToServer(datasend);
-    }
-    else if (datasend == "red:800")
-    {
-      datasend = "green:1000";
-      sendToServer(datasend);
-    }
-    else
-    {
-      datasend = "green:1000";
-      sendToServer(datasend);
-    }
-
   }
+  // Use Serial TX/RX
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n'); // Read data from Mega
     data.trim();
     if (data.length() > 0) {
-      datasend = data;
       sendToServer(data);
     }
   }
@@ -95,5 +84,7 @@ void sendToServer(String message) {
     http.end();
   } else {
     Serial.println("WiFi Disconnected");
+    Serial.println("Please RST the ESP8266 NodeMCU");
+    delay(2000);
   }
 }
