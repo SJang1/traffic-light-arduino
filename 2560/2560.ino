@@ -4,6 +4,8 @@
 #define yellow_light_pin 36
 #define red_light_pin 35
 
+const int redgreenchangecm = 15;
+
 const int segmentPins[] = {2, 3, 4, 5, 6, 7, 8, 9}; // A, B, C, D, E, F, G, DP
 const int digitPins[] = {10, 11, 12, 13}; // Digit control pins (common anodes)
 
@@ -112,7 +114,7 @@ void loop() {
   int distance_loop = HC_SR04_LOOP();
   DISP_PRINT(distance_loop);
 
-  if (distance_loop <= 10 && tram_light != "green") {
+  if (distance_loop <= redgreenchangecm && tram_light != "green") {
     // Car light to yellow, then red
     print_yellow_light();
     car_light_status = "yellow";
@@ -128,7 +130,7 @@ void loop() {
     tram_light = "green";
     Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
     delay(3000);
-  } else if (distance_loop > 10 && tram_light == "green") {
+  } else if (distance_loop > redgreenchangecm && tram_light == "green") {
     // Tram light to red, car light to green
     print_red_light();
     tram_light = "red";
