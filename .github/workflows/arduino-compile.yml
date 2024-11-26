@@ -27,7 +27,7 @@ jobs:
 
 
       - name: Compile NodeMCU 1.0 Sketch
-        uses: arduino/compile-sketches@v1.1.2
+        uses: SJang1/arduino-compile-sketches@main
         with:
           fqbn: "esp8266:esp8266:nodemcuv2"       # Fully Qualified Board Name for NodeMCU 1.0
           sketch-paths: |
