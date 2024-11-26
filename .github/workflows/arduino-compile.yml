@@ -16,33 +16,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Verify Poetry Installation
-        run: poetry --version
-
-      - name: Install Dependencies
-        run: |
-          poetry install
-
       - name: Compile Mega 2560 Sketch
         uses: arduino/compile-sketches@v1.1.2
         with:
-          fqbn: "arduino:avr:mega"
+          fqbn: "arduino:avr:mega"                # Fully Qualified Board Name for Mega 2560
           sketch-paths: |
-            - 2560
-          cli-version: "latest"
-          verbose: true
-          sketches-report-path: "reports/mega"
-          libraries: |
+            - 2560                                 # Path to Mega 2560 sketch
+          cli-version: "latest"                   # (Optional) Specify Arduino CLI version
+          verbose: true                            # (Optional) Enable verbose logging
+          sketches-report-path: "reports/mega"     # (Optional) Path to save compilation reports
+          libraries: |                             # (Optional) Specify library dependencies
             - name: Servo
             - name: Stepper
               version: 1.1.3
@@ -50,27 +33,27 @@ jobs:
       - name: Compile NodeMCU 1.0 Sketch
         uses: arduino/compile-sketches@v1.1.2
         with:
-          fqbn: "esp8266:esp8266:nodemcuv2"
+          fqbn: "esp8266:esp8266:nodemcuv2"       # Fully Qualified Board Name for NodeMCU 1.0
           sketch-paths: |
-            - esp
-          cli-version: "latest"
-          verbose: true
-          sketches-report-path: "reports/nodemcu"
-          platforms: |
+            - esp                                  # Path to NodeMCU 1.0 sketch
+          cli-version: "latest"                   # (Optional) Specify Arduino CLI version
+          verbose: true                            # (Optional) Enable verbose logging
+          sketches-report-path: "reports/nodemcu" # (Optional) Path to save compilation reports
+          platforms: |                             # Platform dependencies for ESP8266
             - name: "esp8266:esp8266"
               source-url: "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-          libraries: |
+          libraries: |                             # Library dependencies for ESP8266
             - name: ESP8266WiFi
             - name: ESPAsyncWebServer
               version: 1.2.3
 
-      - name: Upload Mega Report
+      - name: Upload Mega 2560 Report
         uses: actions/upload-artifact@v3
         with:
           name: mega-report
           path: reports/mega
 
-      - name: Upload NodeMCU Report
+      - name: Upload NodeMCU 1.0 Report
         uses: actions/upload-artifact@v3
         with:
           name: nodemcu-report
