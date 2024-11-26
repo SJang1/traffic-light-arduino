@@ -21,7 +21,7 @@ jobs:
         with:
           fqbn: "arduino:avr:mega"                # Fully Qualified Board Name for Mega 2560
           sketch-paths: |
-            - 2560                                 # Path to Mega 2560 sketch
+            - "2560"                                 # Path to Mega 2560 sketch
           cli-version: "latest"                   # (Optional) Specify Arduino CLI version
           verbose: true                            # (Optional) Enable verbose logging
           sketches-report-path: "reports/mega"     # (Optional) Path to save compilation reports
@@ -35,7 +35,7 @@ jobs:
         with:
           fqbn: "esp8266:esp8266:nodemcuv2"       # Fully Qualified Board Name for NodeMCU 1.0
           sketch-paths: |
-            - esp                                  # Path to NodeMCU 1.0 sketch
+            - "esp"                                  # Path to NodeMCU 1.0 sketch
           cli-version: "latest"                   # (Optional) Specify Arduino CLI version
           verbose: true                            # (Optional) Enable verbose logging
           sketches-report-path: "reports/nodemcu" # (Optional) Path to save compilation reports
