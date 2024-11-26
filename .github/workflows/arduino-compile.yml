@@ -48,13 +48,13 @@ jobs:
 #              version: 1.2.3
 
       - name: Upload Mega 2560 Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mega-report
           path: reports/mega
 
       - name: Upload NodeMCU 1.0 Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nodemcu-report
           path: reports/nodemcu
