@@ -72,37 +72,3 @@ jobs:
         with:
           name: ${{ matrix.board.artifact_name }}
           path: ${{ matrix.board.compiled_file_pattern }}
-
-
-
-
-      # 2. Compile Arduino Sketch
-      - name: Compile ${{ matrix.board.name }} Sketch
-        uses: arduino/compile-sketches@v1.1.2
-        with:
-          fqbn: "${{ matrix.board.fqbn }}"
-          sketch-paths: |
-            - ${{ matrix.board.sketch_path }}
-          cli-version: "latest"
-          verbose: true
-          sketches-report-path: "${{ matrix.board.report_path }}"
-          platforms: ${{ matrix.board.platforms }}
-          libraries: ${{ matrix.board.libraries }}
-
-      # 3. Diagnostic: List Build Directory (Optional)
-      - name: List Build Directory for ${{ matrix.board.name }}
-        run: ls -la ${{ matrix.board.sketch_path }}/build
-
-      # 4. Upload Compilation Report
-      - name: Upload ${{ matrix.board.name }} Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.board.name }}-report
-          path: ${{ matrix.board.report_path }}
-
-      # 5. Upload Compiled Binary
-      - name: Upload ${{ matrix.board.name }} Compiled Binary
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.board.artifact_name }}
-          path: ${{ matrix.board.compiled_file_pattern }}
