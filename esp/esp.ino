@@ -1,35 +1,52 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+// WiFi Credentials
 const char* ssid = "SJ iPhone 15 PM";
 const char* password = "1234567890";
 
-// String serverName = "https://traffic.sjang.dev/api/update"; // Production (Turn on Argo before Showing users)
-String serverName = "https://traffic.sjy-dae.zone/api/update"; // dev
+// Server URLs
+// String serverName = "https://traffic.sjang.dev/api/update"; // Production
+String serverName = "https://traffic.sjy-dae.zone/api/update"; // Development
 
+// GPIO Pin for Button
+const int buttonPin = 0;
+
+// State Variables
 int flashbutton;
 int currentState = 0;
 
+// Data Holders
 String data1 = ""; // Holds data for ID 1
 String data2 = ""; // Holds data for ID 2
 
-String parseData(String state, int id) {
-  String prefix = String(id) + ":";
-  int startIndex = state.indexOf(prefix);
-  if (startIndex != -1) {
-    int endIndex = state.indexOf(" ", startIndex); // Find the end of this ID's data
-    if (endIndex == -1) {
-      endIndex = state.length(); // If no space, take the rest of the string
-    }
-    return state.substring(startIndex, endIndex); // Extract the substring for the specific ID
-  }
-  return ""; // Return an empty string if the ID is not found
-}
+// Send Queue Configuration
+#define QUEUE_SIZE 10
+String sendQueue[QUEUE_SIZE];
+int queueHead = 0;
+int queueTail = 0;
+int queueCount = 0;
+
+// HTTP Request State
+bool isSending = false;
+String currentPayload = "";
+WiFiClientSecure client;
+
+// Function Prototypes
+bool enqueueData(String data);
+bool dequeueData(String &data);
+String parseData(String state, int id);
+String constructJsonPayload();
+String formatData(String message, int id);
+void processSendQueue();
+void sendHttpRequest(String payload);
+String getHost(String url);
+int getPort(String url);
+String getPath(String url);
 
 void setup() {
-  Serial.begin(9600);  // For communication with Mega
-  WiFi.begin(ssid, password);
+  Serial.begin(9600);  // Initialize Serial for debugging
+  WiFi.begin(ssid, password); // Connect to WiFi
 
   Serial.println("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -38,111 +55,228 @@ void setup() {
   }
   Serial.println("\nConnected to WiFi!");
 
-  pinMode(0, INPUT_PULLUP);
+  pinMode(buttonPin, INPUT_PULLUP); // Initialize button pin
 }
 
 void loop() {
-  flashbutton = digitalRead(0);
+  flashbutton = digitalRead(buttonPin);
 
-  if (flashbutton == 0) {
+  // Handle Button Press with Debounce
+  if (flashbutton == LOW) {
     static unsigned long lastPressTime = 0;
     unsigned long currentPressTime = millis();
 
-    // Debounce logic to prevent rapid toggling
-    if (currentPressTime - lastPressTime > 500) { // 500ms debounce delay
+    // Debounce Delay
+    if (currentPressTime - lastPressTime > 500) { // 500ms debounce
       // Define the states as combined strings
-      String states[] = {"1:1000:red 2:-1:green", "1:500:red 2:-1:yellow", "1:800:green 2:-1:red"};
+      String states[] = {
+        "1:1000:red 2:-1:green",
+        "1:500:red 2:-1:yellow",
+        "1:800:green 2:-1:red"
+      };
 
       // Get the current state string
       String state = states[currentState];
 
-      // Split the string into data1 and data2
-      data1 = parseData(state, 1); // Parse for ID 1
-      data2 = parseData(state, 2); // Parse for ID 2
+      // Parse data for ID 1 and ID 2
+      data1 = parseData(state, 1);
+      data2 = parseData(state, 2);
 
-      // Update the current state for the next button press
+      // Update state for next button press
       currentState = (currentState + 1) % 3;
 
-      // Send the combined payload for ID 1 and ID 2
-      sendToServer();
+      // Construct JSON Payload
+      String jsonPayload = constructJsonPayload();
 
-      // Update the last press time
+      // Enqueue the payload
+      if (enqueueData(jsonPayload)) {
+        Serial.println("Enqueued JSON Payload: " + jsonPayload);
+      }
+
+      // Update last press time
       lastPressTime = currentPressTime;
     }
   }
 
-  // Use Serial1 for receiving data and prepare data for ID 2
+  // Handle Incoming Serial Data
   if (Serial.available()) {
-    String data = Serial.readStringUntil('\n'); // Read data from Serial1
-    data.trim();
-    if (data.length() > 0) {
-      String state = data;
-      data1 = parseData(state, 1); // Parse for ID 1
-      data2 = parseData(state, 2); // Parse for ID 2
-      sendToServer(); // Send the combined payload for ID 1 and ID 2
+    String incomingData = Serial.readStringUntil('\n');
+    incomingData.trim();
+    if (incomingData.length() > 0) {
+      String state = incomingData;
+      data1 = parseData(state, 1);
+      data2 = parseData(state, 2);
+
+      String jsonPayload = constructJsonPayload();
+
+      if (enqueueData(jsonPayload)) {
+        Serial.println("Enqueued JSON Payload from Serial: " + jsonPayload);
+      }
     }
   }
+
+  // Process the Send Queue
+  processSendQueue();
 }
 
-String formatData(String message, int id) {
-  int firstColonIndex = message.indexOf(":");
-  int lastColonIndex = message.lastIndexOf(":");
-  
-  if (firstColonIndex == -1 || lastColonIndex == -1 || firstColonIndex == lastColonIndex) {
-    return ""; // Return an empty string if the format is incorrect
+// Enqueue Data into Send Queue
+bool enqueueData(String data) {
+  if (queueCount >= QUEUE_SIZE) {
+    Serial.println("Send queue is full! Dropping data.");
+    return false;
+  }
+  sendQueue[queueTail] = data;
+  queueTail = (queueTail + 1) % QUEUE_SIZE;
+  queueCount++;
+  return true;
+}
+
+// Dequeue Data from Send Queue
+bool dequeueData(String &data) {
+  if (queueCount == 0) {
+    return false;
+  }
+  data = sendQueue[queueHead];
+  queueHead = (queueHead + 1) % QUEUE_SIZE;
+  queueCount--;
+  return true;
+}
+
+// Parse Data String for a Given ID
+String parseData(String state, int id) {
+  String prefix = String(id) + ":";
+  int startIndex = state.indexOf(prefix);
+  if (startIndex != -1) {
+    int endIndex = state.indexOf(" ", startIndex);
+    if (endIndex == -1) {
+      endIndex = state.length();
+    }
+    return state.substring(startIndex, endIndex);
+  }
+  return "";
+}
+
+// Construct JSON Payload from data1 and data2
+String constructJsonPayload() {
+  String jsonPayload = "{";
+  bool firstEntry = true;
+
+  if (data1.length() > 0) {
+    jsonPayload += formatData(data1, 1);
+    firstEntry = false;
   }
 
-  String distance = message.substring(firstColonIndex + 1, lastColonIndex);
-  String color = message.substring(lastColonIndex + 1);
+  if (data2.length() > 0) {
+    if (!firstEntry) jsonPayload += ", ";
+    jsonPayload += formatData(data2, 2);
+  }
+
+  jsonPayload += "}";
+  return jsonPayload;
+}
+
+// Format Data into JSON Structure
+String formatData(String message, int id) {
+  int firstColon = message.indexOf(":");
+  int lastColon = message.lastIndexOf(":");
+
+  if (firstColon == -1 || lastColon == -1 || firstColon == lastColon) {
+    return "";
+  }
+
+  String distance = message.substring(firstColon + 1, lastColon);
+  String color = message.substring(lastColon + 1);
 
   return "\"" + String(id) + "\":{\"status\": \"" + color + "\", \"distance_cm\": " + distance + "}";
 }
 
-void sendToServer() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    WiFiClientSecure client;
-    client.setInsecure(); // Use insecure connection for HTTPS
-
-    http.begin(client, serverName);
-    http.addHeader("Content-Type", "application/json");
-
-    // Construct the payload with data1 and data2
-    String jsonPayload = "{";
-    bool firstData = true;
-
-    if (data1.length() > 0) {
-      jsonPayload += formatData(data1, 1);
-      firstData = false;
-    }
-
-    if (data2.length() > 0) {
-      if (!firstData) jsonPayload += ", ";
-      jsonPayload += formatData(data2, 2);
-    }
-
-    jsonPayload += "}";
-
-    Serial.println("Sending JSON Payload: " + jsonPayload);
-    int httpResponseCode = http.POST(jsonPayload);
-
-    if (httpResponseCode > 0) {
-      Serial.print("HTTP Response code: ");
-      Serial.println(httpResponseCode);
-
-      if (httpResponseCode != 200) {
-        String responseBody = http.getString(); // Get the response body
-        Serial.print("Response body: ");
-        Serial.println(responseBody);
-      }
-    } else {
-      Serial.print("Error code: ");
-      Serial.println(httpResponseCode);
-    }
-    http.end();
-  } else {
-    Serial.println("WiFi Disconnected");
-    Serial.println("Please RST the ESP8266 NodeMCU");
-    delay(2000);
+// Process the Send Queue
+void processSendQueue() {
+  if (!isSending && dequeueData(currentPayload)) {
+    isSending = true;
+    sendHttpRequest(currentPayload);
   }
+
+  if (isSending) {
+    if (!client.connected()) {
+      Serial.println("HTTP Send Complete or Failed");
+      client.stop();
+      isSending = false;
+    }
+  }
+}
+
+// Send HTTP POST Request
+void sendHttpRequest(String payload) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi Disconnected. Cannot send data.");
+    isSending = false;
+    return;
+  }
+
+  client.setInsecure(); // Disable SSL certificate verification (not recommended for production)
+
+  String host = getHost(serverName);
+  int port = getPort(serverName);
+  String path = getPath(serverName);
+
+  Serial.println("Connecting to server...");
+  if (!client.connect(host.c_str(), port)) {
+    Serial.println("Connection to server failed!");
+    isSending = false;
+    return;
+  }
+
+  // Construct HTTP POST Request
+  String request = "POST " + path + " HTTP/1.1\r\n" +
+                   "Host: " + host + "\r\n" +
+                   "Content-Type: application/json\r\n" +
+                   "Content-Length: " + String(payload.length()) + "\r\n" +
+                   "Connection: close\r\n\r\n" +
+                   payload;
+
+  // Send HTTP Request
+  client.print(request);
+  Serial.println("HTTP request sent.");
+
+  // Do not wait for the response to keep it non-blocking
+}
+
+// Helper Functions to Parse URL Components
+String getHost(String url) {
+  int protocolEnd = url.indexOf("://");
+  int hostStart = (protocolEnd != -1) ? protocolEnd + 3 : 0;
+  int hostEnd = url.indexOf('/', hostStart);
+  if (hostEnd == -1) hostEnd = url.length();
+  String host = url.substring(hostStart, hostEnd);
+
+  // Remove port if present
+  int colonIndex = host.indexOf(':');
+  if (colonIndex != -1) {
+    host = host.substring(0, colonIndex);
+  }
+  return host;
+}
+
+int getPort(String url) {
+  int protocolEnd = url.indexOf("://");
+  int hostStart = (protocolEnd != -1) ? protocolEnd + 3 : 0;
+  int colonIndex = url.indexOf(':', hostStart);
+  if (colonIndex != -1) {
+    int portStart = colonIndex + 1;
+    int portEnd = url.indexOf('/', portStart);
+    if (portEnd == -1) portEnd = url.length();
+    String portStr = url.substring(portStart, portEnd);
+    return portStr.toInt();
+  }
+  // Default ports
+  if (url.startsWith("https://")) return 443;
+  if (url.startsWith("http://")) return 80;
+  return 80; // Default to HTTP port if not specified
+}
+
+String getPath(String url) {
+  int pathStart = url.indexOf('/', url.indexOf("://") + 3);
+  if (pathStart == -1) return "/";
+  return url.substring(pathStart);
 }
