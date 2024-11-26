@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Compile Mega 2560 Sketch
-        uses: arduino/compile-sketches@v1.1.1
+        uses: SJang1/arduino-compile-sketches@v1.1.2-sjang
         with:
           fqbn: "arduino:avr:mega"                # Fully Qualified Board Name for Mega 2560
           sketch-paths: |
