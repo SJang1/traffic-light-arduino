@@ -56,7 +56,6 @@ void handleIdleState(int distance_loop);
 void handleYellowState();
 void handleRedState();
 void handleGreenState();
-void performOtherTasks();
 
 void setup() {
   Serial.begin(9600);
@@ -218,6 +217,4 @@ void loop() {
       break;
   }
 
-  // Example of another task that runs continuously
-  performOtherTasks();
 }
