@@ -11,50 +11,98 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        board:
+          - name: "Mega 2560"
+            fqbn: "arduino:avr:mega"
+            sketch_path: "2560"
+            libraries: |
+              - name: Servo
+              - name: Stepper
+                version: 1.1.3
+            report_path: "reports/mega"
+            compiled_file_pattern: "2560/build/*.hex"
+            artifact_name: "Mega2560-Binary"
+          - name: "NodeMCU 1.0"
+            fqbn: "esp8266:esp8266:nodemcuv2"
+            sketch_path: "esp"
+            platforms: |
+              - name: "esp8266:esp8266"
+                source-url: "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+            libraries: |
+              - name: ESPAsyncWebServer
+                version: 1.2.3
+            report_path: "reports/nodemcu"
+            compiled_file_pattern: "esp/build/*.bin"
+            artifact_name: "NodeMCU1.0-Binary"
 
     steps:
+      # 1. Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Compile Mega 2560 Sketch
-        uses: SJang1/arduino-compile-sketches@main
-        with:
-          fqbn: "arduino:avr:mega"                # Fully Qualified Board Name for Mega 2560
-          sketch-paths: |
-            - "2560"                                 # Path to Mega 2560 sketch
-          cli-version: "latest"                   # (Optional) Specify Arduino CLI version
-          verbose: true                            # (Optional) Enable verbose logging
-          sketches-report-path: "reports/mega"     # (Optional) Path to save compilation reports
-#          libraries: |                             # (Optional) Specify library dependencies
-#            - name: Servo
-#            - name: Stepper
-#              version: 1.1.3
-
-      - name: Compile NodeMCU 1.0 Sketch
+      # 2. Compile Arduino Sketch
+      - name: Compile ${{ matrix.board.name }} Sketch
         uses: arduino/compile-sketches@v1.1.2
         with:
-          fqbn: "esp8266:esp8266:nodemcuv2"       # Fully Qualified Board Name for NodeMCU 1.0
+          fqbn: "${{ matrix.board.fqbn }}"
           sketch-paths: |
-            - "esp"                                  # Path to NodeMCU 1.0 sketch
-          cli-version: "latest"                   # (Optional) Specify Arduino CLI version
-          verbose: true                            # (Optional) Enable verbose logging
-          sketches-report-path: "reports/nodemcu" # (Optional) Path to save compilation reports
-          platforms: |                             # Platform dependencies for ESP8266
-            - name: "esp8266:esp8266"
-              source-url: "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-#          libraries: |                             # Library dependencies for ESP8266
-#            - name: ESP8266WiFi
-#            - name: ESPAsyncWebServer
-#              version: 1.2.3
+            - ${{ matrix.board.sketch_path }}
+          cli-version: "latest"
+          verbose: true
+          sketches-report-path: "${{ matrix.board.report_path }}"
+          platforms: ${{ matrix.board.platforms }}
+          libraries: ${{ matrix.board.libraries }}
 
-      - name: Upload Mega 2560 Report
+      # 3. Diagnostic: List Build Directory (Optional)
+      - name: List Build Directory for ${{ matrix.board.name }}
+        run: ls -la ${{ matrix.board.sketch_path }}/build
+
+      # 4. Upload Compilation Report
+      - name: Upload ${{ matrix.board.name }} Compilation Report
         uses: actions/upload-artifact@v4
         with:
-          name: mega-report
-          path: reports/mega
+          name: ${{ matrix.board.name }}-Report
+          path: ${{ matrix.board.report_path }}
 
-      - name: Upload NodeMCU 1.0 Report
+      # 5. Upload Compiled Binary
+      - name: Upload ${{ matrix.board.name }} Compiled Binary
         uses: actions/upload-artifact@v4
         with:
-          name: nodemcu-report
-          path: reports/nodemcu
+          name: ${{ matrix.board.artifact_name }}
+          path: ${{ matrix.board.compiled_file_pattern }}
+
+
+
+
+      # 2. Compile Arduino Sketch
+      - name: Compile ${{ matrix.board.name }} Sketch
+        uses: arduino/compile-sketches@v1.1.2
+        with:
+          fqbn: "${{ matrix.board.fqbn }}"
+          sketch-paths: |
+            - ${{ matrix.board.sketch_path }}
+          cli-version: "latest"
+          verbose: true
+          sketches-report-path: "${{ matrix.board.report_path }}"
+          platforms: ${{ matrix.board.platforms }}
+          libraries: ${{ matrix.board.libraries }}
+
+      # 3. Diagnostic: List Build Directory (Optional)
+      - name: List Build Directory for ${{ matrix.board.name }}
+        run: ls -la ${{ matrix.board.sketch_path }}/build
+
+      # 4. Upload Compilation Report
+      - name: Upload ${{ matrix.board.name }} Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.board.name }}-report
+          path: ${{ matrix.board.report_path }}
+
+      # 5. Upload Compiled Binary
+      - name: Upload ${{ matrix.board.name }} Compiled Binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.board.artifact_name }}
+          path: ${{ matrix.board.compiled_file_pattern }}
