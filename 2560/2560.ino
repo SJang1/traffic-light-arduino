@@ -25,16 +25,60 @@ const byte digitToSegment[] = {
 String tram_light = "red";
 String car_light_status = "green";
 
-// defines variables
+// Timing variables
+unsigned long previousMillis = 0;
+const unsigned long interval = 3000; // 3 seconds
+
+// State enumeration
+enum TrafficState {
+  STATE_IDLE,
+  STATE_YELLOW,
+  STATE_RED,
+  STATE_GREEN
+};
+
+TrafficState currentState = STATE_IDLE;
+
+// Defines variables
 long duration;
 int distance;
+
+// Function Declarations
+void DISP_SETUP();
+void HC_SR04_SETUP();
+void light_setup();
+void DISP_PRINT(int number);
+int HC_SR04_LOOP();
+void print_green_light();
+void print_yellow_light();
+void print_red_light();
+void handleIdleState(int distance_loop);
+void handleYellowState();
+void handleRedState();
+void handleGreenState();
+void performOtherTasks();
+
+void setup() {
+  Serial.begin(9600);
+  HC_SR04_SETUP();
+  light_setup();
+  DISP_SETUP();
+
+  // Initialize lights
+  print_green_light();
+
+  // Initialize previousMillis
+  previousMillis = millis();
+}
 
 void DISP_SETUP() {
   for (int i = 0; i < 8; i++) {
     pinMode(segmentPins[i], OUTPUT);
+    digitalWrite(segmentPins[i], LOW); // Initialize to off
   }
   for (int i = 0; i < 4; i++) {
     pinMode(digitPins[i], OUTPUT);
+    digitalWrite(digitPins[i], HIGH); // Common anode off
   }
 }
 
@@ -49,14 +93,6 @@ void light_setup() {
   pinMode(red_light_pin, OUTPUT);
 }
 
-void setup() {
-  Serial.begin(9600);
-  Serial1.begin(9600);
-  HC_SR04_SETUP();
-  light_setup();
-  DISP_SETUP();
-}
-
 void DISP_PRINT(int number) {
   int digits[4] = {0, 0, 0, 0};
   digits[3] = number % 10;
@@ -65,16 +101,15 @@ void DISP_PRINT(int number) {
   digits[0] = (number / 1000) % 10;
 
   for (int i = 0; i < 4; i++) {
-    digitalWrite(digitPins[i], LOW);
+    digitalWrite(digitPins[i], LOW); // Activate digit
 
     for (int j = 0; j < 8; j++) {
       bool isOn = digitToSegment[digits[i]] & (1 << j);
       digitalWrite(segmentPins[j], isOn ? HIGH : LOW);
     }
 
-    delay(5);
-
-    digitalWrite(digitPins[i], HIGH);
+    delay(5); // Small delay to stabilize the display
+    digitalWrite(digitPins[i], HIGH); // Deactivate digit
   }
 }
 
@@ -85,8 +120,12 @@ int HC_SR04_LOOP() {
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  duration = pulseIn(echoPin, HIGH);
-  distance = duration * 0.034 / 2;
+  duration = pulseIn(echoPin, HIGH, 30000); // Timeout after ~30ms
+  if (duration == 0) {
+    distance = -1; // Indicate no echo received
+  } else {
+    distance = duration * 0.034 / 2;
+  }
   Serial.print("Distance: ");
   Serial.println(distance);
   return distance;
@@ -96,56 +135,89 @@ void print_green_light() {
   digitalWrite(green_light_pin, HIGH);
   digitalWrite(yellow_light_pin, LOW);
   digitalWrite(red_light_pin, LOW);
+  car_light_status = "green";
 }
 
 void print_yellow_light() {
   digitalWrite(green_light_pin, LOW);
   digitalWrite(yellow_light_pin, HIGH);
   digitalWrite(red_light_pin, LOW);
+  car_light_status = "yellow";
 }
 
 void print_red_light() {
   digitalWrite(green_light_pin, LOW);
   digitalWrite(yellow_light_pin, LOW);
   digitalWrite(red_light_pin, HIGH);
+  car_light_status = "red";
+}
+
+void handleIdleState(int distance_loop) {
+  if (distance_loop <= redgreenchangecm && tram_light != "green") {
+    currentState = STATE_YELLOW;
+    previousMillis = millis();
+  }
+}
+
+void handleYellowState() {
+  print_yellow_light();
+  tram_light = "red";
+  Serial.println("1:" + String(distance) + ":" + tram_light + " 2:-1:" + car_light_status);
+  currentState = STATE_RED;
+  previousMillis = millis();
+}
+
+void handleRedState() {
+  print_red_light();
+  distance = HC_SR04_LOOP();
+  DISP_PRINT(distance);
+  car_light_status = "red";
+  tram_light = "green";
+  Serial.println("1:" + String(distance) + ":" + tram_light + " 2:-1:" + car_light_status);
+  currentState = STATE_GREEN;
+  previousMillis = millis();
+}
+
+void handleGreenState() {
+  print_green_light();
+  car_light_status = "green";
+  tram_light = "red";
+  Serial.println("1:" + String(distance) + ":" + tram_light + " 2:-1:" + car_light_status);
+  currentState = STATE_IDLE;
+  previousMillis = millis();
 }
 
 void loop() {
-  int distance_loop = HC_SR04_LOOP();
-  DISP_PRINT(distance_loop);
+  unsigned long currentMillis = millis();
 
-  if (distance_loop <= redgreenchangecm && tram_light != "green") {
-    // Car light to yellow, then red
-    print_yellow_light();
-    car_light_status = "yellow";
-    // 1: tram, 2:car
-    tram_light = "red";
-    Serial1.println("1:" + String(distance_loop) + ":" + tram_light +" 2:-1:" + car_light_status);
-    delay(3000);
+  // Continuously read distance and update display
+  distance = HC_SR04_LOOP();
+  DISP_PRINT(distance);
 
-    print_red_light();
-    distance_loop = HC_SR04_LOOP();
-    DISP_PRINT(distance_loop);
-    car_light_status = "red";
-    tram_light = "green";
-    Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(3000);
-  } else if (distance_loop > redgreenchangecm && tram_light == "green") {
-    // Tram light to red, car light to green
-    print_red_light();
-    tram_light = "red";
-    delay(3000);
+  switch (currentState) {
+    case STATE_IDLE:
+      handleIdleState(distance);
+      break;
 
-    distance_loop = HC_SR04_LOOP();
-    DISP_PRINT(distance_loop);
+    case STATE_YELLOW:
+      if (currentMillis - previousMillis >= interval) {
+        handleYellowState();
+      }
+      break;
 
-    print_green_light();
-    car_light_status = "green";
-    Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(3000);
-  } else {
-    // Maintain current states
-    Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    delay(3000);
+    case STATE_RED:
+      if (currentMillis - previousMillis >= interval) {
+        handleRedState();
+      }
+      break;
+
+    case STATE_GREEN:
+      if (currentMillis - previousMillis >= interval) {
+        handleGreenState();
+      }
+      break;
   }
+
+  // Example of another task that runs continuously
+  performOtherTasks();
 }
