@@ -25,10 +25,10 @@ jobs:
           cli-version: "latest"                   # (Optional) Specify Arduino CLI version
           verbose: true                            # (Optional) Enable verbose logging
           sketches-report-path: "reports/mega"     # (Optional) Path to save compilation reports
-          libraries: |                             # (Optional) Specify library dependencies
-            - name: Servo
-            - name: Stepper
-              version: 1.1.3
+#          libraries: |                             # (Optional) Specify library dependencies
+#            - name: Servo
+#            - name: Stepper
+#              version: 1.1.3
 
       - name: Compile NodeMCU 1.0 Sketch
         uses: arduino/compile-sketches@v1.1.2
