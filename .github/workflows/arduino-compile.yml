@@ -1,0 +1,48 @@
+name: Compile Arduino Sketches
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Compile Mega 2560 Sketch
+        uses: arduino/compile-sketches@v1.1.2
+        with:
+          fqbn: "arduino:avr:mega"
+          sketch-paths: |
+            - 2560
+          cli-version: "latest"
+          verbose: true
+          sketches-report-path: "reports/mega"
+          libraries: |
+            - name: Servo
+            - name: Stepper
+              version: 1.1.3
+
+      - name: Compile NodeMCU 1.0 Sketch
+        uses: arduino/compile-sketches@v1.1.2
+        with:
+          fqbn: "esp8266:esp8266:nodemcuv2"
+          sketch-paths: |
+            - esp
+          cli-version: "latest"
+          verbose: true
+          sketches-report-path: "reports/nodemcu"
+          platforms: |
+            - name: "esp8266:esp8266"
+              source-url: "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
+          libraries: |
+            - name: ESP8266WiFi
+            - name: ESPAsyncWebServer
+              version: 1.2.3
