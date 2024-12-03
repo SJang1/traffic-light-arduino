@@ -1,8 +1,18 @@
 #define trigPin 31
 #define echoPin 32
-#define green_light_pin 39
-#define yellow_light_pin 38
+#define green_light_pin 41
+#define yellow_light_pin 40
 #define red_light_pin 39
+
+unsigned long yellowStartTime = 0;
+unsigned long redStartTime = 0;
+unsigned long greenStartTime = 0;
+bool yellowInProgress = false;
+bool redInProgress = false;
+bool greenInProgress = false;
+unsigned long hc_time = 0;
+unsigned long internet = 0;
+
 
 const int redgreenchangecm = 15;
 
@@ -23,16 +33,17 @@ const byte digitToSegment[] = {
 };
 
 String tram_light = "red";
-String car_light_status = "green";
+String car_light = "green";
 
 // defines variables
 long duration;
 int distance;
-
+int distance_loop = 0;
 unsigned long lastUpdateTime = 0;
 unsigned long lightChangeTime = 0;
+unsigned long yellow_lightChangeTime = 0;
 unsigned long displayUpdateTime = 0;
-const unsigned long lightInterval = 3000; // Time interval for light changes
+const unsigned long lightInterval = 500; // Time interval for light changes
 const unsigned long displayInterval = 5; // Time interval for refreshing display
 
 bool displayOn = true;
@@ -64,6 +75,14 @@ void setup() {
   HC_SR04_SETUP();
   light_setup();
   DISP_SETUP();
+
+      greenInProgress = true;
+    yellowInProgress = false;
+    redInProgress = false;
+    tram_light = "red";
+    car_light = "green";
+    print_green_light();
+
 }
 
 void DISP_PRINT(int number) {
@@ -105,64 +124,66 @@ int HC_SR04_LOOP() {
   return distance;
 }
 
-void set_lights(String tram_light, String car_light_status) {
-  if (tram_light == "red") {
-    if (car_light_status == "green") {
-      digitalWrite(green_light_pin, HIGH);
-      digitalWrite(yellow_light_pin, LOW);
-      digitalWrite(red_light_pin, LOW);
-    } else if (car_light_status == "yellow") {
-      digitalWrite(green_light_pin, LOW);
-      digitalWrite(yellow_light_pin, HIGH);
-      digitalWrite(red_light_pin, LOW);
-    }
-  } else if (tram_light == "green") {
-    digitalWrite(green_light_pin, LOW);
-    digitalWrite(yellow_light_pin, LOW);
-    digitalWrite(red_light_pin, HIGH);
-  }
+void print_green_light() {
+  digitalWrite(green_light_pin, HIGH);
+  digitalWrite(yellow_light_pin, LOW);
+  digitalWrite(red_light_pin, LOW);
+}
+
+void print_yellow_light() {
+  digitalWrite(green_light_pin, LOW);
+  digitalWrite(yellow_light_pin, HIGH);
+  digitalWrite(red_light_pin, LOW);
+}
+
+void print_red_light() {
+  digitalWrite(green_light_pin, LOW);
+  digitalWrite(yellow_light_pin, LOW);
+  digitalWrite(red_light_pin, HIGH);
 }
 
 void loop() {
-  unsigned long currentTime = millis();
+  unsigned long currentTime = millis(); // Get the current time
 
-  // Update the distance and display
-  if (currentTime - lastUpdateTime >= 100) { // Check distance every 100ms
-    lastUpdateTime = currentTime;
-    int distance_loop = HC_SR04_LOOP();
-    displayNumber = distance_loop;
-    DISP_PRINT(displayNumber);
+  // Read distance every 500ms
+  if (currentTime - hc_time >= 500) {
+    distance_loop = HC_SR04_LOOP();
+    hc_time = currentTime;
+  }
+  DISP_PRINT(distance_loop);
 
-    if (distance_loop <= redgreenchangecm && tram_light != "green") {
-      car_light_status = "yellow";
-      tram_light = "red";
-      lightChangeTime = currentTime;
-      Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    } else if (distance_loop > redgreenchangecm && tram_light == "green") {
-      car_light_status = "green";
-      tram_light = "red";
-      lightChangeTime = currentTime;
-      Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    } else {
-      Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light_status);
-    }
+
+  if (greenInProgress && distance_loop <= 15) {
+    
+    greenInProgress = false;
+    yellowInProgress = true;
+    redInProgress = false;
+    tram_light = "red";
+    car_light = "yellow";
+    print_yellow_light();
+    yellowStartTime = currentTime;
+  }
+  if (yellowInProgress &&  currentTime - yellowStartTime >= 3000) {
+    greenInProgress = false;
+    yellowInProgress = false;
+    redInProgress = true;
+    tram_light = "green";
+    car_light = "red";
+    print_red_light();
+  }
+  if (redInProgress && distance_loop > 15) {
+    greenInProgress = true;
+    yellowInProgress = false;
+    redInProgress = false;
+    tram_light = "red";
+    car_light = "green";
+    print_green_light();
   }
 
-  // Handle light state changes
-  if (currentTime - lightChangeTime >= lightInterval) {
-    if (car_light_status == "yellow") {
-      car_light_status = "red";
-      tram_light = "green";
-      lightChangeTime = currentTime;
-      Serial1.println("1:" + String(displayNumber) + ":" + tram_light + " 2:-1:" + car_light_status);
-    } else if (tram_light == "red" && car_light_status == "red") {
-      car_light_status = "green";
-      tram_light = "red";
-      lightChangeTime = currentTime;
-      Serial1.println("1:" + String(displayNumber) + ":" + tram_light + " 2:-1:" + car_light_status);
-    }
+  if (currentTime - internet >= 2000) {
+  Serial1.println("1:" + String(distance_loop) + ":" + tram_light + " 2:-1:" + car_light);
+  internet = currentTime;
   }
-
-  // Update lights
-  set_lights(tram_light, car_light_status);
 }
+
+
