@@ -1,8 +1,8 @@
 #define trigPin 31
 #define echoPin 32
 #define green_light_pin 39
-#define yellow_light_pin 36
-#define red_light_pin 35
+#define yellow_light_pin 38
+#define red_light_pin 39
 
 const int redgreenchangecm = 15;
 
